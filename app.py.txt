@@ -1,0 +1,89 @@
+import pandas as pd
+import streamlit as st
+
+st.set_page_config(
+    page_title="Análisis Inmobiliario - Rosario", layout="wide"
+)
+
+st.title("📍 Plataforma de Análisis Inmobiliario - Rosario")
+st.markdown(
+    "Herramienta de visualización y comparación de propiedades cargadas."
+)
+
+# Simulamos una base de datos en memoria o archivo simple (en producción se conecta a una DB)
+if "propiedades" not in st.session_state:
+    st.session_state.propiedades = pd.DataFrame(
+        [
+            {
+                "Título": "Depto 1 Dormitorio Pichincha",
+                "Barrio": "Pichincha",
+                "Operación": "Venta",
+                "Precio (USD)": 72000,
+                "Superficie (m²)": 45,
+            },
+            {
+                "Título": "Oficina Centro San Martín",
+                "Barrio": "Centro",
+                "Operación": "Venta",
+                "Precio (USD)": 110000,
+                "Superficie (m²)": 80,
+            },
+        ]
+    )
+
+# Sidebar para cargar propiedades
+st.sidebar.header("Cargar Propiedad")
+with st.sidebar.form("form_prop"):
+    titulo = st.text_input("Identificador / Título")
+    barrio = st.selectbox(
+        "Barrio",
+        [
+            "Centro",
+            "Pichincha",
+            "Echesortu",
+            "Alberdi",
+            "Sudoeste",
+            "República de la Sexta",
+        ],
+    )
+    operacion = st.selectbox("Operación", ["Venta", "Alquiler"])
+    precio = st.number_input("Precio", min_value=0, value=50000)
+    sqm = st.number_input("Superficie (m²)", min_value=0, value=50)
+
+    submitted = st.form_submit_button("Guardar en la Nube")
+    if submitted and titulo:
+        nueva = pd.DataFrame(
+            [{
+                "Título": titulo,
+                "Barrio": barrio,
+                "Operación": operacion,
+                "Precio (USD)": precio,
+                "Superficie (m²)": sqm,
+            }]
+        )
+        st.session_state.propiedades = pd.concat(
+            [st.session_state.propiedades, nueva], ignore_index=True
+        )
+        st.sidebar.success("¡Propiedad guardada con éxito!")
+
+# Visualización principal para cualquier persona que entre al link
+df = st.session_state.propiedades
+
+if not df.empty:
+    df["USD / m²"] = (df["Precio (USD)"] / df["Superficie (m²)"]).round(2)
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Total Propiedades", len(df))
+    col2.metric(
+        "Promedio USD / m²",
+        f"${int(df['USD / m²'].mean()) if len(df) > 0 else 0}",
+    )
+    col3.metric(
+        "Barrio Principal",
+        df["Barrio"].mode()[0] if not df.empty else "N/A",
+    )
+
+    st.subheader("Listado y Comparación")
+    st.dataframe(df, use_container_width=True)
+else:
+    st.info("No hay propiedades cargadas todavía.")
